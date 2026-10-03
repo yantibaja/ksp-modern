@@ -1,388 +1,355 @@
-import React, { useState, Component } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient'
 
-// ==========================================
-// 1. ERROR BOUNDARY (Mencegah Layar Putih)
-// ==========================================
-class ErrorBoundary extends Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false, error: null }
+// --- HELPER UNTUK GENERATE KODE KOPERASI ---
+const generateKodeKoperasi = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let code = 'KOP'
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
   }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("Aplikasi Error:", error, errorInfo)
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-          <h2 style={{ color: '#ef4444' }}>Terjadi Kesalahan Sistem</h2>
-          <p style={{ color: '#64748b' }}>{this.state.error?.toString()}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            style={{ padding: '10px 20px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-          >
-            Muat Ulang Halaman
-          </button>
-        </div>
-      )
-    }
-    return this.props.children
-  }
+  return code
 }
 
-// ==========================================
-// 2. DATA DUMMY AWAL
-// ==========================================
-const initialAnggota = [
-  { id: 'KSP-001', nama: 'Budi Santoso', noKtp: '5303012304850001', telepon: '081234567890', simpanan: 5000000, status: 'Aktif' },
-  { id: 'KSP-002', nama: 'Siti Aminah', noKtp: '5303015508920002', telepon: '082198765432', simpanan: 3500000, status: 'Aktif' },
-  { id: 'KSP-003', nama: 'YOHANES RIWU', noKtp: '5303011211780003', telepon: '085239123456', simpanan: 12000000, status: 'Aktif' },
-]
+export default function App() {
+  const [session, setSession] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [view, setView] = useState('LOGIN') // LOGIN, REG_KOPERASI, REG_NASABAH, REG_PENAGIH
+  const [loading, setLoading] = useState(false)
 
-const initialPinjaman = [
-  { id: 'P-101', nama: 'YOHANES RIWU', jumlah: 10000000, tenor: 12, sisaTenor: 8, angsuran: 950000, status: 'Berjalan' },
-  { id: 'P-102', nama: 'Siti Aminah', jumlah: 3000000, tenor: 6, sisaTenor: 2, angsuran: 550000, status: 'Berjalan' },
-  { id: 'P-103', nama: 'Budi Santoso', jumlah: 5000000, tenor: 10, sisaTenor: 0, angsuran: 550000, status: 'Lunas' },
-]
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session) fetchProfile(session.user.id)
+    })
 
-// ==========================================
-// 3. HALAMAN DASHBOARD
-// ==========================================
-function Dashboard({ anggota, pinjaman }) {
-  const totalSimpanan = anggota.reduce((acc, curr) => acc + curr.simpanan, 0)
-  const totalPinjamanAktif = pinjaman
-    .filter(p => p.status === 'Berjalan')
-    .reduce((acc, curr) => acc + curr.jumlah, 0)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session) fetchProfile(session.user.id)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const fetchProfile = async (userId) => {
+    const { data } = await supabase.from('profiles').select('*, koperasi(*)').eq('id', userId).single()
+    setProfile(data)
+  }
+
+  const handleLogout = () => supabase.auth.signOut().then(() => { setSession(null); setProfile(null) })
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4 font-sans">
+        {view === 'LOGIN' && <LoginForm setView={setView} fetchProfile={fetchProfile} />}
+        {view === 'REG_KOPERASI' && <RegisterKoperasi setView={setView} />}
+        {view === 'REG_NASABAH' && <RegisterNasabah setView={setView} />}
+        {view === 'REG_PENAGIH' && <RegisterPenagih setView={setView} />}
+      </div>
+    )
+  }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', color: '#0f172a' }}>Dashboard Ringkasan</h1>
-        <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>Sistem Informasi Koperasi Simpan Pinjam Modern</p>
-      </div>
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans">
+      {/* Sidebar Navigation */}
+      <aside className="w-full md:w-64 bg-slate-900 text-slate-200 p-4 flex flex-col justify-between">
+        <div>
+          <div className="text-xl font-bold tracking-wider text-sky-400 mb-6 flex items-center gap-2">
+            <span>KSP MODERN</span>
+          </div>
+          <div className="text-xs text-slate-400 mb-4 pb-2 border-b border-slate-800">
+            Role: <span className="font-semibold text-white">{profile?.role}</span><br/>
+            Koperasi: <span className="font-semibold text-white">{profile?.koperasi?.nama || '-'}</span>
+          </div>
+          <nav className="space-y-2">
+            <button className="w-full text-left py-2 px-3 rounded bg-slate-800 text-white font-medium">Dashboard</button>
+            {['SUPER_ADMIN', 'ADMIN_KOPERASI'].includes(profile?.role) && (
+              <>
+                <button className="w-full text-left py-2 px-3 rounded hover:bg-slate-800 text-slate-300">Approval Center</button>
+                <button className="w-full text-left py-2 px-3 rounded hover:bg-slate-800 text-slate-300">Data Nasabah</button>
+                <button className="w-full text-left py-2 px-3 rounded hover:bg-slate-800 text-slate-300">Manajemen Pinjaman</button>
+                <button className="w-full text-left py-2 px-3 rounded hover:bg-slate-800 text-slate-300">Kelola Tim Penagih</button>
+                <button className="w-full text-left py-2 px-3 rounded hover:bg-slate-800 text-slate-300">Pengaturan & Bank</button>
+              </>
+            )}
+            {profile?.role === 'PENAGIH' && (
+              <button className="w-full text-left py-2 px-3 rounded hover:bg-slate-800 text-slate-300">Tugas Penagihan</button>
+            )}
+            {profile?.role === 'NASABAH' && (
+              <button className="w-full text-left py-2 px-3 rounded hover:bg-slate-800 text-slate-300">Pinjaman Saya & Bayar</button>
+            )}
+          </nav>
+        </div>
+        <button onClick={handleLogout} className="mt-8 w-full bg-rose-600 hover:bg-rose-700 text-white py-2 rounded font-medium">
+          Keluar
+        </button>
+      </aside>
 
-      {/* Grid Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <div style={cardStyle}>
-          <span style={cardTitleStyle}>Total Anggota</span>
-          <div style={cardValueStyle}>{anggota.length} Orang</div>
-          <span style={{ fontSize: '12px', color: '#16a34a' }}>● Semua terverifikasi</span>
-        </div>
-        <div style={cardStyle}>
-          <span style={cardTitleStyle}>Total Kas Simpanan</span>
-          <div style={{ ...cardValueStyle, color: '#2563eb' }}>Rp {totalSimpanan.toLocaleString('id-ID')}</div>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>Simpanan Pokok & Wajib</span>
-        </div>
-        <div style={cardStyle}>
-          <span style={cardTitleStyle}>Pinjaman Aktif</span>
-          <div style={{ ...cardValueStyle, color: '#d97706' }}>Rp {totalPinjamanAktif.toLocaleString('id-ID')}</div>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>{pinjaman.filter(p => p.status === 'Berjalan').length} Transaksi Berjalan</span>
-        </div>
-      </div>
+      {/* Main Content Area */}
+      <main className="flex-1 p-6 overflow-y-auto">
+        <HeaderBar profile={profile} />
+        {profile?.status === 'PENDING' ? (
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded mt-4">
+            <p className="font-semibold text-amber-800">Akun Anda Menunggu Persetujuan</p>
+            <p className="text-sm text-amber-700">Pendaftaran Anda sedang ditinjau oleh Admin/Super Admin.</p>
+          </div>
+        ) : (
+          <DashboardMain profile={profile} />
+        )}
+      </main>
+    </div>
+  )
+}
 
-      {/* Tabel Aktivitas / Pinjaman Terbaru */}
-      <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ margin: '0 0 16px 0', color: '#0f172a' }}>Pinjaman Terbaru</h3>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #f1f5f9', color: '#64748b' }}>
-                <th style={{ padding: '12px' }}>ID</th>
-                <th style={{ padding: '12px' }}>Peminjam</th>
-                <th style={{ padding: '12px' }}>Jumlah</th>
-                <th style={{ padding: '12px' }}>Angsuran/Bln</th>
-                <th style={{ padding: '12px' }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pinjaman.map((p) => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.id}</td>
-                  <td style={{ padding: '12px' }}>{p.nama}</td>
-                  <td style={{ padding: '12px' }}>Rp {p.jumlah.toLocaleString('id-ID')}</td>
-                  <td style={{ padding: '12px' }}>Rp {p.angsuran.toLocaleString('id-ID')}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={{
-                      padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
-                      backgroundColor: p.status === 'Berjalan' ? '#fef3c7' : '#dcfce7',
-                      color: p.status === 'Berjalan' ? '#d97706' : '#16a34a'
-                    }}>
-                      {p.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+// --- FORM LOGIN ---
+function LoginForm({ setView, fetchProfile }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) alert(error.message)
+    else fetchProfile(data.user.id)
+  }
+
+  return (
+    <div className="bg-slate-800 p-8 rounded-xl w-full max-w-md border border-slate-700 shadow-xl">
+      <h2 className="text-2xl font-bold mb-6 text-center text-sky-400">Masuk KSP Modern</h2>
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold mb-1 text-slate-300">EMAIL / TELEPON</label>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required className="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-sky-500"/>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold mb-1 text-slate-300">PASSWORD</label>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required className="w-full p-2.5 rounded bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-sky-500"/>
+        </div>
+        <button type="submit" className="w-full py-3 bg-sky-500 hover:bg-sky-600 font-bold rounded text-white transition">MASUK</button>
+      </form>
+      <div className="mt-6 pt-4 border-t border-slate-700 text-center text-xs text-slate-400 space-y-2">
+        <p>Belum punya akun?</p>
+        <div className="flex justify-center gap-2 flex-wrap">
+          <button onClick={()=>setView('REG_NASABAH')} className="text-sky-400 underline">Daftar Nasabah</button>
+          <span>•</span>
+          <button onClick={()=>setView('REG_PENAGIH')} className="text-sky-400 underline">Daftar Penagih</button>
+          <span>•</span>
+          <button onClick={()=>setView('REG_KOPERASI')} className="text-emerald-400 underline">Daftar Koperasi</button>
         </div>
       </div>
     </div>
   )
 }
 
-// ==========================================
-// 4. HALAMAN DATA ANGGOTA
-// ==========================================
-function Anggota({ anggota, setAnggota }) {
-  const [search, setSearch] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ nama: '', noKtp: '', telepon: '', simpanan: '' })
+// --- REGISTRASI KOPERASI BARU ---
+function RegisterKoperasi({ setView }) {
+  const [form, setForm] = useState({ namaPemilik: '', nik: '', alamatPemilik: '', namaKoperasi: '', alamatKoperasi: '', noTelp: '', email: '', password: '' })
 
-  const filtered = anggota.filter(a => 
-    a.nama.toLowerCase().includes(search.toLowerCase()) || 
-    a.noKtp.includes(search)
-  )
-
-  const handleTambah = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault()
-    if (!form.nama || !form.noKtp) return alert('Nama dan No KTP wajib diisi!')
+    const kodeUnik = generateKodeKoperasi()
     
-    const newAnggota = {
-      id: `KSP-00${anggota.length + 1}`,
-      nama: form.nama,
-      noKtp: form.noKtp,
-      telepon: form.telepon || '-',
-      simpanan: Number(form.simpanan) || 0,
-      status: 'Aktif'
-    }
+    // 1. SignUp User
+    const { data: authData, error: authErr } = await supabase.auth.signUp({ email: form.email, password: form.password })
+    if (authErr) return alert(authErr.message)
 
-    setAnggota([...anggota, newAnggota])
-    setForm({ nama: '', noKtp: '', telepon: '', simpanan: '' })
-    setShowModal(false)
+    // 2. Insert Koperasi
+    const { data: kopData, error: kopErr } = await supabase.from('koperasi').insert({
+      kode_unik: kodeUnik,
+      nama: form.namaKoperasi,
+      alamat: form.alamatKoperasi,
+      no_telp: form.noTelp,
+      status: 'PENDING'
+    }).select().single()
+
+    if (kopErr) return alert(kopErr.message)
+
+    // 3. Insert Profile Admin Koperasi
+    await supabase.from('profiles').insert({
+      id: authData.user.id,
+      koperasi_id: kopData.id,
+      role: 'ADMIN_KOPERASI',
+      nik: form.nik,
+      no_hp: form.noTelp,
+      nama_lengkap: form.namaPemilik,
+      status: 'PENDING'
+    })
+
+    alert(`Pendaftaran Koperasi Berhasil!\nKode Unik Koperasi Anda: ${kodeUnik}\nStatus: Menunggu Approve Super Admin.`)
+    setView('LOGIN')
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '24px', color: '#0f172a' }}>Data Anggota</h1>
-          <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>Kelola daftar anggota resmi KSP</p>
+    <div className="bg-slate-800 p-8 rounded-xl w-full max-w-lg border border-slate-700 my-8">
+      <h2 className="text-xl font-bold mb-4 text-emerald-400">Registrasi Koperasi Baru</h2>
+      <form onSubmit={handleRegister} className="space-y-3 text-sm">
+        <input placeholder="Nama Pemilik/Pendiri" onChange={e=>setForm({...form, namaPemilik: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input placeholder="NIK Pemilik" onChange={e=>setForm({...form, nik: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input placeholder="Nama Koperasi" onChange={e=>setForm({...form, namaKoperasi: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input placeholder="No Telp Koperasi" onChange={e=>setForm({...form, noTelp: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <textarea placeholder="Alamat Koperasi" onChange={e=>setForm({...form, alamatKoperasi: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input type="email" placeholder="Email Akun Login" onChange={e=>setForm({...form, email: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input type="password" placeholder="Password" onChange={e=>setForm({...form, password: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <div className="flex gap-2 pt-2">
+          <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold py-2 rounded">Daftar Koperasi</button>
+          <button type="button" onClick={()=>setView('LOGIN')} className="px-4 bg-slate-700 rounded">Batal</button>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          style={{ backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-        >
-          + Tambah Anggota
-        </button>
+      </form>
+    </div>
+  )
+}
+
+// --- REGISTRASI NASABAH (SELF-REGISTRATION) ---
+function RegisterNasabah({ setView }) {
+  const [kodeKoperasi, setKodeKoperasi] = useState('')
+  const [form, setForm] = useState({ nama: '', nik: '', noHp: '', email: '', password: '', alamat: '' })
+
+  const handleRegister = async (e) => {
+    e.preventDefault()
+    // Validasi Kode Koperasi
+    const { data: kop } = await supabase.from('koperasi').select('id').eq('kode_unik', kodeKoperasi.toUpperCase()).single()
+    if (!kop) return alert('Kode Koperasi tidak ditemukan/salah!')
+
+    const { data: authData, error } = await supabase.auth.signUp({ email: form.email, password: form.password })
+    if (error) return alert(error.message)
+
+    await supabase.from('profiles').insert({
+      id: authData.user.id,
+      koperasi_id: kop.id,
+      role: 'NASABAH',
+      nik: form.nik,
+      no_hp: form.noHp,
+      nama_lengkap: form.nama,
+      status: 'PENDING'
+    })
+
+    alert('Pendaftaran Nasabah Berhasil! Menunggu persetujuan Admin.')
+    setView('LOGIN')
+  }
+
+  return (
+    <div className="bg-slate-800 p-8 rounded-xl w-full max-w-lg border border-slate-700 my-8">
+      <h2 className="text-xl font-bold mb-4 text-sky-400">Registrasi Nasabah</h2>
+      <form onSubmit={handleRegister} className="space-y-3 text-sm">
+        <input placeholder="KODE KOPERASI (Contoh: KOP8A2X)" value={kodeKoperasi} onChange={e=>setKodeKoperasi(e.target.value)} required className="w-full p-2 rounded bg-slate-900 border border-amber-500 font-bold tracking-widest text-amber-400 uppercase"/>
+        <input placeholder="Nama Lengkap sesuai KTP" onChange={e=>setForm({...form, nama: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input placeholder="NIK (16 Digit)" onChange={e=>setForm({...form, nik: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input placeholder="No WhatsApp/HP" onChange={e=>setForm({...form, noHp: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input type="email" placeholder="Email" onChange={e=>setForm({...form, email: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input type="password" placeholder="Password" onChange={e=>setForm({...form, password: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <div className="flex gap-2 pt-2">
+          <button type="submit" className="flex-1 bg-sky-600 hover:bg-sky-700 font-bold py-2 rounded">Daftar Nasabah</button>
+          <button type="button" onClick={()=>setView('LOGIN')} className="px-4 bg-slate-700 rounded">Batal</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// --- REGISTRASI PENAGIH (SELF-REGISTRATION) ---
+function RegisterPenagih({ setView }) {
+  const [kodeKoperasi, setKodeKoperasi] = useState('')
+  const [form, setForm] = useState({ nama: '', nik: '', noHp: '', email: '', password: '' })
+
+  const handleRegister = async (e) => {
+    e.preventDefault()
+    const { data: kop } = await supabase.from('koperasi').select('id').eq('kode_unik', kodeKoperasi.toUpperCase()).single()
+    if (!kop) return alert('Kode Koperasi tidak valid!')
+
+    const { data: authData, error } = await supabase.auth.signUp({ email: form.email, password: form.password })
+    if (error) return alert(error.message)
+
+    await supabase.from('profiles').insert({
+      id: authData.user.id,
+      koperasi_id: kop.id,
+      role: 'PENAGIH',
+      nik: form.nik,
+      no_hp: form.noHp,
+      nama_lengkap: form.nama,
+      status: 'PENDING'
+    })
+
+    alert('Pendaftaran Penagih Berhasil! Menunggu persetujuan Admin Koperasi.')
+    setView('LOGIN')
+  }
+
+  return (
+    <div className="bg-slate-800 p-8 rounded-xl w-full max-w-lg border border-slate-700 my-8">
+      <h2 className="text-xl font-bold mb-4 text-amber-400">Registrasi Lapangan / Penagih</h2>
+      <form onSubmit={handleRegister} className="space-y-3 text-sm">
+        <input placeholder="KODE KOPERASI (Contoh: KOP8A2X)" value={kodeKoperasi} onChange={e=>setKodeKoperasi(e.target.value)} required className="w-full p-2 rounded bg-slate-900 border border-amber-500 font-bold tracking-widest text-amber-400 uppercase"/>
+        <input placeholder="Nama Lengkap" onChange={e=>setForm({...form, nama: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input placeholder="NIK KTP" onChange={e=>setForm({...form, nik: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input placeholder="No HP/WA" onChange={e=>setForm({...form, noHp: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input type="email" placeholder="Email" onChange={e=>setForm({...form, email: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <input type="password" placeholder="Password" onChange={e=>setForm({...form, password: e.target.value})} required className="w-full p-2 rounded bg-slate-900 border border-slate-700"/>
+        <div className="flex gap-2 pt-2">
+          <button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700 font-bold py-2 rounded">Daftar Penagih</button>
+          <button type="button" onClick={()=>setView('LOGIN')} className="px-4 bg-slate-700 rounded">Batal</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// --- HEADER & DASHBOARD UTAMA ---
+function HeaderBar({ profile }) {
+  return (
+    <div className="flex justify-between items-center pb-4 border-b border-slate-200">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Halo, {profile?.nama_lengkap}</h1>
+        <p className="text-xs text-slate-500">Aplikasi Sistem Koperasi Simpan Pinjam Modern</p>
       </div>
-
-      {/* Search Bar */}
-      <input 
-        type="text" 
-        placeholder="Cari nama atau No. KTP..." 
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '20px', boxSizing: 'border-box' }}
-      />
-
-      {/* Modal Tambah Anggota */}
-      {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '400px' }}>
-            <h3 style={{ marginTop: 0 }}>Tambah Anggota Baru</h3>
-            <form onSubmit={handleTambah} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input type="text" placeholder="Nama Lengkap" value={form.nama} onChange={e => setForm({...form, nama: e.target.value})} style={inputStyle} required />
-              <input type="text" placeholder="No. KTP / NIK" value={form.noKtp} onChange={e => setForm({...form, noKtp: e.target.value})} style={inputStyle} required />
-              <input type="text" placeholder="No. WhatsApp / Telepon" value={form.telepon} onChange={e => setForm({...form, telepon: e.target.value})} style={inputStyle} />
-              <input type="number" placeholder="Simpanan Awal (Rp)" value={form.simpanan} onChange={e => setForm({...form, simpanan: e.target.value})} style={inputStyle} />
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                <button type="submit" style={{ flex: 1, backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer' }}>Simpan</button>
-                <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, backgroundColor: '#94a3b8', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer' }}>Batal</button>
-              </div>
-            </form>
-          </div>
+      {profile?.koperasi?.kode_unik && (
+        <div className="bg-sky-100 text-sky-800 px-3 py-1 rounded-full text-xs font-bold border border-sky-300">
+          Kode Koperasi: {profile.koperasi.kode_unik}
         </div>
       )}
-
-      {/* Tabel Anggota */}
-      <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
-          <thead>
-            <tr style={{ background: '#f8fafc', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
-              <th style={{ padding: '14px' }}>ID</th>
-              <th style={{ padding: '14px' }}>Nama</th>
-              <th style={{ padding: '14px' }}>No. KTP</th>
-              <th style={{ padding: '14px' }}>Telepon</th>
-              <th style={{ padding: '14px' }}>Total Simpanan</th>
-              <th style={{ padding: '14px' }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(a => (
-              <tr key={a.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '14px', fontWeight: 'bold' }}>{a.id}</td>
-                <td style={{ padding: '14px' }}>{a.nama}</td>
-                <td style={{ padding: '14px' }}>{a.noKtp}</td>
-                <td style={{ padding: '14px' }}>{a.telepon}</td>
-                <td style={{ padding: '14px', fontWeight: 'bold', color: '#16a34a' }}>Rp {a.simpanan.toLocaleString('id-ID')}</td>
-                <td style={{ padding: '14px' }}>
-                  <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', backgroundColor: '#dcfce7', color: '#16a34a', fontWeight: 'bold' }}>{a.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }
 
-// ==========================================
-// 5. HALAMAN PINJAMAN & SIMULASI
-// ==========================================
-function Pinjaman({ pinjaman, setPinjaman, anggota }) {
-  const [jumlah, setJumlah] = useState(5000000)
-  const [tenor, setTenor] = useState(12)
-  const bunga = 0.01 // Bunga 1% per bulan
-
-  const angsuranPerBulan = Math.round((jumlah / tenor) + (jumlah * bunga))
-
+function DashboardMain({ profile }) {
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', color: '#0f172a' }}>Manajemen Pinjaman</h1>
-        <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>Simulasi angsuran dan daftar pinjaman aktif</p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-        {/* Kalkulator Simulasi */}
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ marginTop: 0, color: '#0f172a' }}>Simulasi Kalkulator Pinjaman</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', color: '#64748b' }}>Jumlah Pinjaman (Rp)</label>
-              <input type="number" value={jumlah} onChange={e => setJumlah(Number(e.target.value))} style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', color: '#64748b' }}>Tenor (Bulan)</label>
-              <select value={tenor} onChange={e => setTenor(Number(e.target.value))} style={inputStyle}>
-                <option value={6}>6 Bulan</option>
-                <option value={12}>12 Bulan</option>
-                <option value={24}>24 Bulan</option>
-              </select>
-            </div>
-            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '8px' }}>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Estimasi Angsuran / Bulan:</span>
-              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#2563eb' }}>
-                Rp {angsuranPerBulan.toLocaleString('id-ID')}
-              </div>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>*Bunga flat 1% / bulan</span>
-            </div>
-          </div>
+    <div className="mt-6 space-y-6">
+      {/* Cards Stat */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-semibold text-slate-400 uppercase">Total Nasabah</span>
+          <div className="text-2xl font-bold text-slate-800 mt-1">128 Orang</div>
         </div>
-
-        {/* Info Ringkasan Pinjaman */}
-        <div style={{ background: '#1e293b', color: '#fff', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <h3 style={{ marginTop: 0 }}>Ketentuan Pinjaman KSP</h3>
-          <ul style={{ paddingLeft: '20px', fontSize: '14px', lineHeight: '1.6', color: '#cbd5e1' }}>
-            <li>Peminjam harus terdaftar sebagai anggota aktif.</li>
-            <li>Batas maksimum pinjaman berdasarkan jumlah simpanan.</li>
-            <li>Pencairan dana diproses maksimal 1x24 jam kerja.</li>
-          </ul>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-semibold text-slate-400 uppercase">Pinjaman Aktif</span>
+          <div className="text-2xl font-bold text-emerald-600 mt-1">Rp 450.000.000</div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-semibold text-slate-400 uppercase">Total Tunggakan</span>
+          <div className="text-2xl font-bold text-rose-600 mt-1">Rp 12.500.000</div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-semibold text-slate-400 uppercase">Pemasukan Hari Ini</span>
+          <div className="text-2xl font-bold text-sky-600 mt-1">Rp 3.200.000</div>
         </div>
       </div>
 
-      {/* Tabel Pinjaman */}
-      <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
-          <thead>
-            <tr style={{ background: '#f8fafc', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
-              <th style={{ padding: '14px' }}>ID</th>
-              <th style={{ padding: '14px' }}>Nama Peminjam</th>
-              <th style={{ padding: '14px' }}>Plafon Pinjaman</th>
-              <th style={{ padding: '14px' }}>Tenor</th>
-              <th style={{ padding: '14px' }}>Sisa Tenor</th>
-              <th style={{ padding: '14px' }}>Angsuran</th>
-              <th style={{ padding: '14px' }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pinjaman.map(p => (
-              <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '14px', fontWeight: 'bold' }}>{p.id}</td>
-                <td style={{ padding: '14px' }}>{p.nama}</td>
-                <td style={{ padding: '14px' }}>Rp {p.jumlah.toLocaleString('id-ID')}</td>
-                <td style={{ padding: '14px' }}>{p.tenor} Bln</td>
-                <td style={{ padding: '14px' }}>{p.sisaTenor} Bln</td>
-                <td style={{ padding: '14px', fontWeight: 'bold' }}>Rp {p.angsuran.toLocaleString('id-ID')}</td>
-                <td style={{ padding: '14px' }}>
-                  <span style={{
-                    padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
-                    backgroundColor: p.status === 'Berjalan' ? '#fef3c7' : '#dcfce7',
-                    color: p.status === 'Berjalan' ? '#d97706' : '#16a34a'
-                  }}>
-                    {p.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Integrasi WhatsApp Direct Action */}
+      <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex justify-between items-center">
+        <div>
+          <h3 className="font-bold text-emerald-900">Broadcast Marketing & Penagihan WA</h3>
+          <p className="text-xs text-emerald-700">Kirim notifikasi otomatis atau pengingat angsuran lewat WhatsApp API</p>
+        </div>
+        <button 
+          onClick={() => {
+            const phone = "6281234567890"
+            const text = encodeURIComponent("Halo Budi, tagihan pinjaman KSP Anda sebesar Rp 500.000 jatuh tempo pada tanggal 5. Silakan lakukan pembayaran via QRIS/Transfer.")
+            window.open(`https://wa.me/${phone}?text=${text}`, '_blank')
+          }}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition"
+        >
+          Kirim Penagihan WA
+        </button>
       </div>
     </div>
   )
 }
-
-// Navigasi Bar Aktif Component
-function NavigationBar() {
-  const location = useLocation()
-  const isActive = (path) => location.pathname === path
-
-  const navLinkStyle = (path) => ({
-    color: isActive(path) ? '#38bdf8' : '#f8fafc',
-    textDecoration: 'none',
-    fontSize: '14px',
-    fontWeight: isActive(path) ? 'bold' : 'normal',
-    padding: '6px 12px',
-    borderRadius: '6px',
-    backgroundColor: isActive(path) ? 'rgba(255,255,255,0.1)' : 'transparent'
-  })
-
-  return (
-    <nav style={{ backgroundColor: '#0f172a', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-      <strong style={{ color: '#ffffff', fontSize: '18px', marginRight: '16px' }}>KSP Modern</strong>
-      <Link to="/" style={navLinkStyle('/')}>Dashboard</Link>
-      <Link to="/anggota" style={navLinkStyle('/anggota')}>Anggota</Link>
-      <Link to="/pinjaman" style={navLinkStyle('/pinjaman')}>Pinjaman</Link>
-    </nav>
-  )
-}
-
-// ==========================================
-// 6. MAIN APP COMPONENT
-// ==========================================
-export default function App() {
-  const [anggota, setAnggota] = useState(initialAnggota)
-  const [pinjaman, setPinjaman] = useState(initialPinjaman)
-
-  return (
-    <ErrorBoundary>
-      <Router basename="/ksp-modern">
-        <div style={{ fontFamily: 'sans-serif', minHeight: '100vh', backgroundColor: '#f8fafc', color: '#0f172a' }}>
-          <NavigationBar />
-          <main>
-            <Routes>
-              <Route path="/" element={<Dashboard anggota={anggota} pinjaman={pinjaman} />} />
-              <Route path="/anggota" element={<Anggota anggota={anggota} setAnggota={setAnggota} />} />
-              <Route path="/pinjaman" element={<Pinjaman pinjaman={pinjaman} setPinjaman={setPinjaman} anggota={anggota} />} />
-            </Routes>
-          </main>
-        </div>
-      </Router>
-    </ErrorBoundary>
-  )
-}
-
-// Styles Helper
-const cardStyle = { background: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }
-const cardTitleStyle = { fontSize: '12px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }
-const cardValueStyle = { fontSize: '24px', fontWeight: 'bold', margin: '8px 0', color: '#0f172a' }
-const inputStyle = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }
-                  
+                                                                  
