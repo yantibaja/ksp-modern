@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vitejs.dev/config/
+// Base path disesuaikan dengan nama repositori GitHub
 export default defineConfig({
   plugins: [react()],
-  base: '/ksp-modern/', // <--- BARIS INI SANGAT PENTING
+  base: '/ksp-modern/',
 })
