@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KasirKu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--a:#7c5cff;--bg:#f4f5fb;--c:#fff;--t:#1b1d2a;--m:#7b8095;--b:#e5e7f0}
+:root[data-d]{--bg:#0e1019;--c:#171a27;--t:#eef0f8;--m:#8e94ab;--b:#262a3c}
+*{box-sizing:border-box;margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+body{background:var(--bg);color:var(--t)}
+#app{display:flex;min-height:100vh}
+aside{width:84px;background:var(--c);border-right:1px solid var(--b);display:flex;flex-direction:column;padding:12px 8px;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto}
+aside a{display:flex;flex-direction:column;align-items:center;padding:10px 4px;border-radius:16px;cursor:pointer;font-size:20px}
+aside a b{font-size:10px;font-weight:600;color:var(--m)}
+aside a.on{background:var(--a)}aside a.on b{color:#fff}
+.logo{font-weight:800;text-align:center;margin-bottom:8px}.logo span,.login h1 span{color:var(--a)}
+.sp{flex:1}.th{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:8px 0}
+.th i{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid var(--c);box-shadow:0 0 0 1px var(--b)}
+main{flex:1;padding:20px;min-width:0}
+h2{margin-bottom:14px;font-weight:800}
+.login{max-width:340px;margin:12vh auto;display:flex;flex-direction:column;gap:10px;padding:20px;text-align:center}
+.login h1{font-size:40px;font-weight:800}
+input,select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--b);background:var(--c);color:var(--t);font-size:14px}
+.btn{padding:12px 18px;border:0;border-radius:14px;background:var(--a);color:#fff;font-weight:700;cursor:pointer;font-size:14px}
+.btn.ghost{background:transparent;color:var(--t);border:1px solid var(--b)}
+.btn.sm{padding:6px 10px;font-size:12px;border-radius:10px}.btn.red{background:#f03e5e}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.row>*{flex:1}
+.pos{display:grid;grid-template-columns:1fr 360px;gap:16px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0}
+.chip{padding:7px 14px;border-radius:99px;border:1px solid var(--b);background:var(--c);color:var(--t);cursor:pointer;white-space:nowrap;font-size:13px}
+.chip.on{background:var(--a);color:#fff;border-color:var(--a)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.card{background:var(--c);border:1px solid var(--b);border-radius:18px;padding:10px;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.card:active{transform:scale(.97)}
+.card img,.ph{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;background:var(--bg);display:grid;place-items:center;font-size:30px}
+.card small,.mut{color:var(--m);font-size:12px}
+.cart{background:var(--c);border:1px solid var(--b);border-radius:20px;padding:14px;align-self:start;position:sticky;top:20px}
+.ln{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;font-size:13px}
+.q{display:flex;gap:6px;align-items:center}.q button{width:26px;height:26px;border-radius:8px;border:1px solid var(--b);background:var(--bg);color:var(--t);cursor:pointer}
+.tot{font-size:22px;font-weight:800;display:flex;justify-content:space-between;margin:10px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.stats div{background:var(--c);border:1px solid var(--b);border-radius:18px;padding:14px;font-size:12px;color:var(--m)}
+.stats b{display:block;font-size:20px;color:var(--t);margin-top:4px}
+.tbl{background:var(--c);border:1px solid var(--b);border-radius:18px;padding:6px 14px;margin-top:12px;overflow-x:auto}
+.tbl .ln{border-bottom:1px solid var(--b)}.tbl .ln:last-child{border:0}
+.pill{padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:var(--bg)}
+.pill.ok{color:#12b886}.pill.no{color:#f03e5e}.pill.mid{color:#ff8a00}
+.mb{position:fixed;inset:0;background:#0008;display:grid;place-items:center;z-index:9;padding:16px}
+.mc{background:var(--c);border-radius:22px;padding:18px;width:100%;max-width:400px;max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.rc{font-size:12px}.rc .r{display:flex;justify-content:space-between}.rc hr{border:0;border-top:1px dashed var(--m);margin:6px 0}
+video,.thumb{width:100%;max-width:360px;border-radius:18px;background:#000}.thumb{width:44px;height:44px;object-fit:cover;border-radius:10px}
+.chart{width:100%;height:150px;min-width:300px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(30px);background:var(--t);color:var(--bg);padding:10px 18px;border-radius:14px;opacity:0;transition:.25s;z-index:20;font-size:13px}
+#toast.on{opacity:1;transform:translateX(-50%)}
+@media(max-width:800px){
+#app{flex-direction:column-reverse}
+aside{position:fixed;bottom:0;left:0;right:0;width:100%;height:auto;flex-direction:row;z-index:5;border-top:1px solid var(--b);border-right:0;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+aside a{min-width:58px}.logo,.th,.sp{display:none}
+main{padding:14px 14px 90px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+.pos{grid-template-columns:1fr}.cart{position:static}}
+@media print{body *{visibility:hidden}#rc,#rc *{visibility:visible}#rc{position:absolute;left:0;top:0;width:58mm}}
+</style></head><body>
+<div id="app"></div><div id="modal"></div><div id="toast"></div>
+<script>
+// ====== ISI DUA BARIS INI DARI SUPABASE (Project Settings > API) ======
+const SB_URL='ISI_PROJECT_URL_DI_SINI',SB_KEY='ISI_ANON_PUBLIC_KEY_DI_SINI',BIZ='KasirKu';
+// =====================================================================
+const db=supabase.createClient(SB_URL,SB_KEY);
+const $=s=>document.querySelector(s),rp=n=>'Rp'+Number(n||0).toLocaleString('id-ID');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const THEMES={Ungu:'#7c5cff',Biru:'#2f80ff',Hijau:'#12b886',Oranye:'#ff8a00',Merah:'#f03e5e'};
+const NAV=[['kasir','🛒','Kasir'],['riwayat','🧾','Riwayat'],['produk','📦','Produk'],['laporan','📊','Laporan'],['piutang','📒','Piutang'],['shift','⏱️','Shift'],['absen','📸','Absen'],['tim','👥','Tim']];
+const ACC={manager:['kasir','riwayat','produk','laporan','piutang','shift','absen'],kasir:['kasir','riwayat','piutang','shift','absen']};
+let me,prods=[],branches=[],shift,cart=[],held=[],disc=0,cat='Semua',q='',pay='Tunai',lastT,stream,pf='Semua';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2400)}
+function modal(h){$('#modal').innerHTML=h?`<div class="mb" onclick="if(event.target===this)modal()"><div class="mc">${h}</div></div>`:''}
+function setTheme(c){document.documentElement.style.setProperty('--a',c);localStorage.th=c}
+function toggleDark(){const r=document.documentElement;r.toggleAttribute('data-d');localStorage.dk=r.hasAttribute('data-d')?1:''}
+if(localStorage.th)setTheme(localStorage.th);if(localStorage.dk)document.documentElement.setAttribute('data-d','');
+
+// ---------- Login ----------
+function loginView(){$('#app').innerHTML=`<div class="login" style="width:100%"><h1>Kasir<span>Ku</span></h1><p class="mut">Kasir & manajemen bisnis</p><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password (min. 6 karakter)"><button class="btn" onclick="auth(0)">Masuk</button><button class="btn ghost" onclick="auth(1)">Daftar akun baru</button></div>`}
+async function auth(reg){const c={email:$('#em').value,password:$('#pw').value};const r=reg?await db.auth.signUp(c):await db.auth.signInWithPassword(c);if(r.error)return toast(r.error.message);boot()}
+async function logout(){await db.auth.signOut();location.reload()}
+async function boot(){const{data:{session}}=await db.auth.getSession();if(!session)return loginView();
+const{data}=await db.from('profiles').select('*').eq('id',session.user.id).single();me=data;
+if(!me||!me.active){await db.auth.signOut();loginView();return toast('Akun belum aktif. Minta Admin mengaktifkan.')}
+await Promise.all([loadBranches(),loadProds(),loadShift()]);shell();go('kasir')}
+async function loadBranches(){branches=(await db.from('branches').select('*')).data||[]}
+async function loadProds(){prods=(await db.from('products').select('*').order('name')).data||[]}
+async function loadShift(){shift=(await db.from('shifts').select('*').eq('user_id',me.id).is('closed_at',null).maybeSingle()).data}
+function shell(){const ok=n=>me.role==='admin'||(ACC[me.role]||[]).includes(n);
+$('#app').innerHTML=`<aside><div class="logo">Kasir<span>Ku</span></div>${NAV.filter(n=>ok(n[0])).map(n=>`<a id="n-${n[0]}" onclick="go('${n[0]}')">${n[1]}<b>${n[2]}</b></a>`).join('')}<div class="sp"></div><div class="th">${Object.entries(THEMES).map(([k,v])=>`<i title="${k}" style="background:${v}" onclick="setTheme('${v}')"></i>`).join('')}</div><a onclick="toggleDark()">🌓<b>Mode</b></a><a onclick="logout()">🚪<b>Keluar</b></a></aside><main id="main"></main>`}
+function go(t){if(stream){stream.getTracks().forEach(x=>x.stop());stream=null}
+document.querySelectorAll('aside a').forEach(a=>a.classList.toggle('on',a.id==='n-'+t));({kasir,riwayat,produk,laporan,piutang,shift:shiftView,absen,tim})[t]()}
+
+// ---------- Kasir ----------
+function kasir(){const cats=['Semua',...new Set(prods.map(p=>p.category).filter(Boolean))];
+$('#main').innerHTML=`<div class="pos"><section><input placeholder="🔍 Cari produk atau SKU" value="${esc(q)}" oninput="q=this.value;grid()"><div class="chips">${cats.map(c=>`<button class="chip ${c===cat?'on':''}" data-c="${esc(c)}" onclick="cat=this.dataset.c;kasir()">${esc(c)}</button>`).join('')}</div><div class="grid" id="grid"></div></section><section class="cart" id="cart"></section></div>`;grid();cartView()}
+function grid(){const l=prods.filter(p=>(cat==='Semua'||p.category===cat)&&(p.name+' '+(p.sku||'')).toLowerCase().includes(q.toLowerCase()));
+$('#grid').innerHTML=l.map(p=>`<div class="card" onclick="add('${p.id}')">${p.image_url?`<img src="${esc(p.image_url)}" alt="">`:'<div class="ph">🛍️</div>'}<b>${esc(p.name)}</b><small>${rp(p.price)} · stok ${p.stock}</small></div>`).join('')||'<p class="mut">Belum ada produk. Tambahkan di menu Produk.</p>'}
+function add(id){const p=prods.find(x=>x.id==id),c=cart.find(x=>x.id==id);if(p.stock<=0)return toast('Stok habis');
+if(c){if(c.qty>=p.stock)return toast('Stok tidak cukup');c.qty++}else cart.push({id:p.id,name:p.name,price:+p.price,cost:+p.cost||0,qty:1});cartView()}
+function qty(id,d){const c=cart.find(x=>x.id==id),p=prods.find(x=>x.id==id);c.qty=Math.min(c.qty+d,p.stock);if(c.qty<=0)cart=cart.filter(x=>x.id!=id);cartView()}
+const sub=()=>cart.reduce((s,i)=>s+i.price*i.qty,0),tot=()=>Math.max(0,sub()-disc);
+function cartView(){$('#cart').innerHTML=`<h3>Keranjang</h3>${cart.map(i=>`<div class="ln"><span>${esc(i.name)}<br><small class="mut">${rp(i.price)}</small></span><span class="q"><button onclick="qty('${i.id}',-1)">−</button>${i.qty}<button onclick="qty('${i.id}',1)">+</button></span><b>${rp(i.price*i.qty)}</b></div>`).join('')||'<p class="mut">Pilih produk di sebelah kiri</p>'}
+<input type="number" placeholder="Diskon (Rp)" value="${disc||''}" oninput="disc=+this.value||0;$('#tt').textContent=rp(tot());chg()">
+<div class="tot"><span>Total</span><span id="tt">${rp(tot())}</span></div>
+<div class="chips">${['Tunai','QRIS','Transfer','Piutang'].map(m=>`<button class="chip ${m===pay?'on':''}" onclick="pay='${m}';cartView()">${m}</button>`).join('')}</div>
+${pay==='Tunai'?`<input id="cash" type="number" placeholder="Uang diterima" oninput="chg()"><p class="mut" id="chg">Kembalian: Rp0</p>`:''}
+${pay==='QRIS'?'<p class="mut">Minta pelanggan scan QRIS toko, lalu tekan Bayar setelah dana masuk.</p>':''}
+<div class="row"><button class="btn ghost" onclick="hold()">Simpan${held.length?' ('+held.length+')':''}</button><button class="btn" onclick="bayar()">Bayar</button></div>
+${held.length?`<div class="row">${held.map((h,i)=>`<button class="chip" onclick="restore(${i})">Buka #${i+1}</button>`).join('')}</div>`:''}`}
+function chg(){const e=$('#chg');if(e)e.textContent='Kembalian: '+rp(Math.max(0,+$('#cash').value-tot()))}
+function hold(){if(!cart.length)return;held.push({cart,disc});cart=[];disc=0;cartView();toast('Transaksi disimpan')}
+function restore(i){const h=held.splice(i,1)[0];cart=h.cart;disc=h.disc;cartView()}
+async function bayar(){if(!cart.length)return toast('Keranjang kosong');if(!shift)return toast('Buka shift dulu di menu Shift');
+const total=tot();let paid=total,customer=null,due=null;
+if(pay==='Tunai'){paid=+$('#cash').value;if(paid<total)return toast('Uang kurang')}
+if(pay==='Piutang'){customer=prompt('Nama pelanggan:');if(!customer)return;due=prompt('Jatuh tempo (YYYY-MM-DD):');paid=+prompt('DP / dibayar sekarang (Rp, isi 0 jika tidak ada):')||0}
+const trx_no='TRX'+new Date().toISOString().slice(2,10).replace(/-/g,'')+Math.random().toString(36).slice(2,6).toUpperCase();
+const t={trx_no,branch_id:me.branch_id,cashier_id:me.id,cashier_name:me.name,method:pay,discount:disc,total,paid,customer,items:cart,created_at:new Date().toISOString()};
+const r=await db.from('transactions').insert(t);if(r.error)return toast(r.error.message);
+for(const i of cart){const p=prods.find(x=>x.id==i.id);p.stock-=i.qty;await db.from('products').update({stock:p.stock}).eq('id',i.id)}
+if(pay==='Piutang')await db.from('receivables').insert({trx_no,customer,amount:total,paid,due_date:due||null,status:paid>=total?'Lunas':paid>0?'Sebagian':'Belum Lunas'});
+cart=[];disc=0;kasir();receipt(t)}
+function receipt(t){lastT=t;modal(`<div id="rc" class="rc"><h3>${esc(BIZ)}</h3><p>${esc(t.trx_no)}<br>${new Date(t.created_at).toLocaleString('id-ID')}<br>Kasir: ${esc(t.cashier_name)}</p><hr>${t.items.map(i=>`<div class="r"><span>${esc(i.name)} x${i.qty}</span><span>${rp(i.price*i.qty)}</span></div>`).join('')}<hr><div class="r"><span>Diskon</span><span>${rp(t.discount)}</span></div><div class="r"><b>Total</b><b>${rp(t.total)}</b></div><div class="r"><span>${esc(t.method)}</span><span>${rp(t.paid)}</span></div><div class="r"><span>Kembali</span><span>${rp(Math.max(0,t.paid-t.total))}</span></div></div><div class="row"><button class="btn" onclick="window.print()">Cetak</button><button class="btn ghost" onclick="wa()">WhatsApp</button><button class="btn ghost" onclick="modal()">Tutup</button></div>`)}
+function wa(){const t=lastT;open('https://wa.me/?text='+encodeURIComponent(`${BIZ}\n${t.trx_no}\n`+t.items.map(i=>`${i.name} x${i.qty} ${rp(i.price*i.qty)}`).join('\n')+`\nTotal: ${rp(t.total)} (${t.method})`))}
+
+// ---------- Riwayat ----------
+let hist=[];
+async function riwayat(){let s=db.from('transactions').select('*').order('created_at',{ascending:false}).limit(100);if(me.role==='kasir')s=s.eq('cashier_id',me.id);hist=(await s).data||[];
+$('#main').innerHTML=`<h2>Riwayat Transaksi</h2><input placeholder="🔍 Cari nomor TRX / kasir" oninput="hl(this.value)"><div class="tbl" id="hl"></div>`;hl('')}
+function hl(v){v=v.toLowerCase();$('#hl').innerHTML=hist.filter(t=>(t.trx_no+t.cashier_name).toLowerCase().includes(v)).map(t=>`<div class="ln" onclick="receipt(hist.find(x=>x.id=='${t.id}'))" style="cursor:pointer"><span><b>${esc(t.trx_no)}</b><br><small class="mut">${new Date(t.created_at).toLocaleString('id-ID')} · ${esc(t.cashier_name)} · ${esc(t.method)}</small></span><b>${rp(t.total)}</b></div>`).join('')||'<p class="mut" style="padding:10px">Belum ada transaksi</p>'}
+
+// ---------- Produk ----------
+function produk(){const rows=prods.map(p=>`<div class="ln"><span><b>${esc(p.name)}</b><br><small class="mut">${esc(p.sku||'-')} · ${esc(p.category||'-')} · ${rp(p.price)}</small></span><span class="pill ${p.stock<=5?'no':'ok'}">Stok ${p.stock}</span><span><button class="btn sm ghost" onclick="pform('${p.id}')">Ubah</button> <button class="btn sm red" onclick="delP('${p.id}')">Hapus</button></span></div>`).join('');
+$('#main').innerHTML=`<h2>Produk & Stok</h2><div class="stats"><div>Jenis produk<b>${prods.length}</b></div><div>Total stok<b>${prods.reduce((a,p)=>a+p.stock,0)}</b></div></div><button class="btn" onclick="pform()">+ Tambah produk</button><div class="tbl">${rows||'<p class="mut" style="padding:10px">Belum ada produk</p>'}</div>`}
+function pform(id){const p=prods.find(x=>x.id==id)||{};const f=(k,l,t='text')=>`<input id="f-${k}" type="${t}" placeholder="${l}" value="${esc(p[k]??'')}">`;
+modal(`<h3>${id?'Ubah':'Tambah'} produk</h3>${f('name','Nama produk')}${f('sku','SKU / kode')}${f('category','Kategori (Makanan, Minuman, ...)')}${f('price','Harga jual','number')}${f('cost','Harga modal','number')}${f('stock','Stok','number')}${f('image_url','Link foto (opsional)')}<div class="row"><button class="btn ghost" onclick="modal()">Batal</button><button class="btn" onclick="saveP('${id||''}')">Simpan</button></div>`)}
+async function saveP(id){const g=k=>$('#f-'+k).value,d={name:g('name'),sku:g('sku'),category:g('category'),price:+g('price')||0,cost:+g('cost')||0,stock:+g('stock')||0,image_url:g('image_url')};
+if(!d.name)return toast('Nama wajib diisi');const r=id?await db.from('products').update(d).eq('id',id):await db.from('products').insert(d);if(r.error)return toast(r.error.message);modal();await loadProds();produk()}
+async function delP(id){if(!confirm('Hapus produk ini?'))return;await db.from('products').delete().eq('id',id);await loadProds();produk()}
+
+// ---------- Laporan ----------
+async function laporan(days=1){const f=new Date();f.setHours(0,0,0,0);f.setDate(f.getDate()-(days-1));
+const d=(await db.from('transactions').select('*').gte('created_at',f.toISOString()).order('created_at')).data||[];
+const omzet=d.reduce((a,t)=>a+t.total,0),profit=d.reduce((a,t)=>a+t.items.reduce((s,i)=>s+(i.price-i.cost)*i.qty,0)-t.discount,0);
+const grp=(fn)=>{const o={};d.forEach(t=>{const k=fn(t);o[k]=(o[k]||0)+t.total});return o};
+const day=grp(t=>new Date(t.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit'})),ks=Object.keys(day),mx=Math.max(1,...Object.values(day));
+const svg=`<svg class="chart" viewBox="0 0 ${Math.max(6,ks.length)*50+10} 140">${ks.map((k,i)=>{const h=day[k]/mx*100;return`<rect x="${i*50+10}" y="${110-h}" width="34" height="${h}" rx="7" fill="var(--a)"/><text x="${i*50+27}" y="128" text-anchor="middle" font-size="10" fill="currentColor">${k}</text>`}).join('')}</svg>`;
+const top={};d.forEach(t=>t.items.forEach(i=>top[i.name]=(top[i.name]||0)+i.qty));
+const list=(o,fmt)=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`<div class="ln"><span>${esc(k)}</span><b>${fmt(v)}</b></div>`).join('')||'<p class="mut">-</p>';
+const br=grp(t=>(branches.find(b=>b.id===t.branch_id)||{}).name||'Tanpa cabang');
+$('#main').innerHTML=`<h2>Laporan</h2><div class="chips">${[[1,'Hari ini'],[7,'7 hari'],[30,'30 hari']].map(([n,l])=>`<button class="chip ${n===days?'on':''}" onclick="laporan(${n})">${l}</button>`).join('')}</div>
+<div class="stats"><div>Omzet<b>${rp(omzet)}</b></div><div>Transaksi<b>${d.length}</b></div><div>Rata-rata<b>${rp(d.length?omzet/d.length:0)}</b></div><div>Profit bersih<b>${rp(profit)}</b></div></div>
+<div class="tbl" style="overflow-x:auto">${svg}</div>
+<div class="tbl"><b>Produk terlaris</b>${list(top,v=>v+' terjual')}</div>
+<div class="tbl"><b>Performa kasir</b>${list(grp(t=>t.cashier_name),rp)}</div>
+<div class="tbl"><b>Performa cabang</b>${list(br,rp)}</div>`}
+
+// ---------- Piutang ----------
+let rec=[];
+async function piutang(){rec=(await db.from('receivables').select('*').order('due_date')).data||[];
+const l=rec.filter(r=>pf==='Semua'||r.status===pf);
+$('#main').innerHTML=`<h2>Buku Piutang</h2><div class="chips">${['Semua','Belum Lunas','Sebagian','Lunas'].map(s=>`<button class="chip ${s===pf?'on':''}" onclick="pf='${s}';piutang()">${s}</button>`).join('')}</div><div class="tbl">${l.map(r=>`<div class="ln"><span><b>${esc(r.customer)}</b><br><small class="mut">${esc(r.trx_no)} · jatuh tempo ${esc(r.due_date||'-')}<br>Total ${rp(r.amount)} · dibayar ${rp(r.paid)} · sisa ${rp(r.amount-r.paid)}</small></span><span class="pill ${r.status==='Lunas'?'ok':r.status==='Sebagian'?'mid':'no'}">${r.status}</span>${r.status!=='Lunas'?`<button class="btn sm" onclick="cicil('${r.id}')">Bayar</button>`:''}</div>`).join('')||'<p class="mut" style="padding:10px">Tidak ada piutang</p>'}</div>`}
+async function cicil(id){const r=rec.find(x=>x.id==id),v=+prompt('Jumlah cicilan (sisa '+rp(r.amount-r.paid)+')');if(!v||v<=0)return;const paid=Math.min(r.amount,+r.paid+v);await db.from('receivables').update({paid,status:paid>=r.amount?'Lunas':'Sebagian'}).eq('id',id);piutang()}
+
+// ---------- Shift ----------
+async function shiftView(){const h=(await db.from('shifts').select('*').eq('user_id',me.id).order('opened_at',{ascending:false}).limit(10)).data||[];let body;
+if(!shift)body=`<input id="oc" type="number" placeholder="Uang kas awal (Rp)"><button class="btn" onclick="openS()">Buka shift</button>`;
+else{const tr=(await db.from('transactions').select('total,method').eq('cashier_id',me.id).eq('method','Tunai').gte('created_at',shift.opened_at)).data||[],cash=tr.reduce((a,t)=>a+t.total,0),exp=+shift.open_cash+cash;
+body=`<p>Shift dibuka ${new Date(shift.opened_at).toLocaleString('id-ID')}</p><div class="stats"><div>Kas awal<b>${rp(shift.open_cash)}</b></div><div>Penjualan tunai<b>${rp(cash)}</b></div><div>Kas seharusnya<b>${rp(exp)}</b></div></div><input id="cc" type="number" placeholder="Uang kas akhir (hitung manual)"><button class="btn red" onclick="closeS(${exp})">Tutup shift</button>`}
+$('#main').innerHTML=`<h2>Shift Kasir</h2><div class="tbl" style="display:flex;flex-direction:column;gap:10px;padding:14px">${body}</div><div class="tbl"><b>Riwayat shift</b>${h.map(s=>`<div class="ln"><span>${new Date(s.opened_at).toLocaleString('id-ID')}</span><span>${rp(s.open_cash)} → ${s.closed_at?rp(s.close_cash):'berjalan'}</span></div>`).join('')}</div>`}
+async function openS(){const r=await db.from('shifts').insert({user_id:me.id,user_name:me.name,open_cash:+$('#oc').value||0});if(r.error)return toast(r.error.message);await loadShift();shiftView()}
+async function closeS(exp){const c=+$('#cc').value;if(!$('#cc').value)return toast('Isi uang kas akhir');await db.from('shifts').update({close_cash:c,closed_at:new Date().toISOString()}).eq('id',shift.id);toast('Shift ditutup. Selisih kas: '+rp(c-exp));await loadShift();shiftView()}
+
+// ---------- Absensi (kamera langsung, bukan upload) ----------
+async function absen(){$('#main').innerHTML=`<h2>Absensi</h2><video id="vd" autoplay playsinline muted></video><canvas id="cv" hidden></canvas><div class="row" style="max-width:360px"><button class="btn" onclick="snap('Masuk')">Absen masuk</button><button class="btn ghost" onclick="snap('Keluar')">Absen keluar</button></div><div class="tbl" id="al"></div>`;
+try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}});$('#vd').srcObject=stream}catch(e){toast('Izinkan akses kamera di browser')}loadAbsen()}
+async function snap(type){const v=$('#vd');if(!v.videoWidth)return toast('Kamera belum siap');
+const pos=await new Promise(r=>navigator.geolocation.getCurrentPosition(r,()=>r(null),{enableHighAccuracy:true,timeout:10000}));if(!pos)return toast('Aktifkan izin lokasi');
+const c=$('#cv');c.width=320;c.height=Math.round(320*v.videoHeight/v.videoWidth);c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+const r=await db.from('attendance').insert({user_id:me.id,name:me.name,type,lat:pos.coords.latitude,lng:pos.coords.longitude,photo:c.toDataURL('image/jpeg',.6)});if(r.error)return toast(r.error.message);toast('Absen '+type.toLowerCase()+' tersimpan');loadAbsen()}
+async function loadAbsen(){let s=db.from('attendance').select('*').order('created_at',{ascending:false}).limit(30);if(me.role==='kasir')s=s.eq('user_id',me.id);const d=(await s).data||[];
+$('#al').innerHTML=d.map(a=>`<div class="ln"><img class="thumb" src="${a.photo}" alt=""><span><b>${esc(a.name)}</b> · ${a.type}<br><small class="mut">${new Date(a.created_at).toLocaleString('id-ID')}</small></span><a href="https://maps.google.com/?q=${a.lat},${a.lng}" target="_blank" rel="noopener">📍 Lokasi</a></div>`).join('')||'<p class="mut" style="padding:10px">Belum ada absensi</p>'}
+
+// ---------- Cabang & Tim (Admin) ----------
+async function tim(){const us=(await db.from('profiles').select('*').order('name')).data||[];await loadBranches();
+$('#main').innerHTML=`<h2>Cabang & Tim</h2><button class="btn" onclick="addB()">+ Tambah cabang</button><div class="tbl">${branches.map(b=>`<div class="ln"><b>${esc(b.name)}</b><span class="mut">${esc(b.address||'')}</span></div>`).join('')}</div><h3 style="margin-top:18px">Karyawan</h3><div class="tbl">${us.map(u=>`<div class="ln"><b>${esc(u.name)}</b><select onchange="upU('${u.id}',{role:this.value})" style="width:110px">${['admin','manager','kasir'].map(r=>`<option ${r===u.role?'selected':''}>${r}</option>`).join('')}</select><select onchange="upU('${u.id}',{branch_id:this.value||null})" style="width:140px"><option value="">Tanpa cabang</option>${branches.map(b=>`<option value="${b.id}" ${b.id===u.branch_id?'selected':''}>${esc(b.name)}</option>`).join('')}</select><label><input type="checkbox" style="width:auto" ${u.active?'checked':''} onchange="upU('${u.id}',{active:this.checked})"> Aktif</label></div>`).join('')}</div>`}
+async function addB(){const n=prompt('Nama cabang:');if(!n)return;await db.from('branches').insert({name:n,address:prompt('Alamat (opsional):')||''});tim()}
+async function upU(id,d){const r=await db.from('profiles').update(d).eq('id',id);toast(r.error?r.error.message:'Tersimpan')}
+boot();
+</script></body></html>
