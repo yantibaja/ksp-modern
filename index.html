@@ -59,14 +59,14 @@ aside{position:fixed;bottom:0;left:0;right:0;width:100%;height:auto;flex-directi
 aside a{min-width:58px}.logo,.th,.sp{display:none}
 main{padding:14px 14px 90px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .pos{grid-template-columns:1fr}.cart{position:static}}
-@media print{body *{visibility:hidden}#rc,#rc *{visibility:visible}#rc{position:absolute;left:0;top:0;width:58mm}}
+@media print{body:not(.pl) *{visibility:hidden}#rc,#rc *{visibility:visible}#rc{position:absolute;left:0;top:0;width:58mm}body.pl aside,body.pl .np,body.pl .chips{display:none}}
 </style></head><body>
-<div id="app"></div><div id="modal"></div><div id="toast"></div>
+<script>onerror=m=>document.body.insertAdjacentHTML('afterbegin','<div style="padding:12px;background:#f03e5e;color:#fff;font:14px sans-serif">Terjadi error: '+m+'</div>')</script><div id="app"></div><div id="modal"></div><div id="toast"></div>
 <script>
 // ====== ISI DUA BARIS INI DARI SUPABASE (Project Settings > API) ======
-const SB_URL='https://prfzqmopkkuoevvwcuhr.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByZnpxbW9wa2t1b2V2dndjdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MzI5NDUsImV4cCI6MjEwNjUwODk0NX0.XXqOx-gRFV7vLjDguhpl3bjPx-SXkwmOqwWPE8nqW74',BIZ='KasirPro';
+const SB_URL=localStorage.sbu||'https://prfzqmopkkuoevvwcuhr.supabase.co',SB_KEY=localStorage.sbk||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByZnpxbW9wa2t1b2V2dndjdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MzI5NDUsImV4cCI6MjEwNjUwODk0NX0.XXqOx-gRFV7vLjDguhpl3bjPx-SXkwmOqwWPE8nqW74',BIZ='KasirKu';
 // =====================================================================
-const db=supabase.createClient(SB_URL,SB_KEY);
+let db=null;try{db=supabase.createClient(SB_URL,SB_KEY)}catch(e){}
 const $=s=>document.querySelector(s),rp=n=>'Rp'+Number(n||0).toLocaleString('id-ID');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const THEMES={Ungu:'#7c5cff',Biru:'#2f80ff',Hijau:'#12b886',Oranye:'#ff8a00',Merah:'#f03e5e'};
@@ -82,11 +82,14 @@ if(localStorage.th)setTheme(localStorage.th);if(localStorage.dk)document.documen
 // ---------- Login ----------
 function loginView(){$('#app').innerHTML=`<div class="login" style="width:100%"><h1>Kasir<span>Ku</span></h1><p class="mut">Kasir & manajemen bisnis</p><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password (min. 6 karakter)"><button class="btn" onclick="auth(0)">Masuk</button><button class="btn ghost" onclick="auth(1)">Daftar akun baru</button></div>`}
 async function auth(reg){const c={email:$('#em').value,password:$('#pw').value};const r=reg?await db.auth.signUp(c):await db.auth.signInWithPassword(c);if(r.error)return toast(r.error.message);boot()}
+function setupView(){$('#app').innerHTML=`<div class="login" style="width:100%"><h1>Kasir<span>Ku</span></h1><p class="mut">Langkah awal: tempel data dari Supabase (Project Settings → API)</p><input id="su" placeholder="Project URL (https://xxxx.supabase.co)"><input id="sk" placeholder="anon public key"><button class="btn" onclick="saveCfg()">Simpan & mulai</button></div>`}
+function saveCfg(){const u=$('#su').value.trim(),k=$('#sk').value.trim();if(!/^https:\/\/.+\.supabase\.co/.test(u)||k.length<20)return toast('URL atau key belum benar');localStorage.sbu=u;localStorage.sbk=k;location.reload()}
+async function dueAlert(){const d=new Date(Date.now()+3*864e5).toISOString().slice(0,10);const{count}=await db.from('receivables').select('*',{count:'exact',head:true}).neq('status','Lunas').lte('due_date',d);if(count)toast(count+' piutang jatuh tempo (3 hari ke depan). Cek menu Piutang')}
 async function logout(){await db.auth.signOut();location.reload()}
-async function boot(){const{data:{session}}=await db.auth.getSession();if(!session)return loginView();
-const{data}=await db.from('profiles').select('*').eq('id',session.user.id).single();me=data;
+async function boot(){if(!db)return setupView();const{data:{session}}=await db.auth.getSession();if(!session)return loginView();
+const{data,error}=await db.from('profiles').select('*').eq('id',session.user.id).single();me=data;if(error){await db.auth.signOut();loginView();return toast('Database belum siap: '+error.message)}
 if(!me||!me.active){await db.auth.signOut();loginView();return toast('Akun belum aktif. Minta Admin mengaktifkan.')}
-await Promise.all([loadBranches(),loadProds(),loadShift()]);shell();go('kasir')}
+await Promise.all([loadBranches(),loadProds(),loadShift()]);shell();go('kasir');dueAlert()}
 async function loadBranches(){branches=(await db.from('branches').select('*')).data||[]}
 async function loadProds(){prods=(await db.from('products').select('*').order('name')).data||[]}
 async function loadShift(){shift=(await db.from('shifts').select('*').eq('user_id',me.id).is('closed_at',null).maybeSingle()).data}
@@ -109,7 +112,7 @@ function cartView(){$('#cart').innerHTML=`<h3>Keranjang</h3>${cart.map(i=>`<div 
 <div class="tot"><span>Total</span><span id="tt">${rp(tot())}</span></div>
 <div class="chips">${['Tunai','QRIS','Transfer','Piutang'].map(m=>`<button class="chip ${m===pay?'on':''}" onclick="pay='${m}';cartView()">${m}</button>`).join('')}</div>
 ${pay==='Tunai'?`<input id="cash" type="number" placeholder="Uang diterima" oninput="chg()"><p class="mut" id="chg">Kembalian: Rp0</p>`:''}
-${pay==='QRIS'?'<p class="mut">Minta pelanggan scan QRIS toko, lalu tekan Bayar setelah dana masuk.</p>':''}
+${pay==='QRIS'?'<p class="mut">Tekan Bayar untuk menampilkan kode QRIS otomatis.</p>':''}
 <div class="row"><button class="btn ghost" onclick="hold()">Simpan${held.length?' ('+held.length+')':''}</button><button class="btn" onclick="bayar()">Bayar</button></div>
 ${held.length?`<div class="row">${held.map((h,i)=>`<button class="chip" onclick="restore(${i})">Buka #${i+1}</button>`).join('')}</div>`:''}`}
 function chg(){const e=$('#chg');if(e)e.textContent='Kembalian: '+rp(Math.max(0,+$('#cash').value-tot()))}
@@ -121,10 +124,16 @@ if(pay==='Tunai'){paid=+$('#cash').value;if(paid<total)return toast('Uang kurang
 if(pay==='Piutang'){customer=prompt('Nama pelanggan:');if(!customer)return;due=prompt('Jatuh tempo (YYYY-MM-DD):');paid=+prompt('DP / dibayar sekarang (Rp, isi 0 jika tidak ada):')||0}
 const trx_no='TRX'+new Date().toISOString().slice(2,10).replace(/-/g,'')+Math.random().toString(36).slice(2,6).toUpperCase();
 const t={trx_no,branch_id:me.branch_id,cashier_id:me.id,cashier_name:me.name,method:pay,discount:disc,total,paid,customer,items:cart,created_at:new Date().toISOString()};
-const r=await db.from('transactions').insert(t);if(r.error)return toast(r.error.message);
+if(pay==='QRIS'&&!(await qris(trx_no,Math.round(total))))return toast('Pembayaran QRIS dibatalkan');const r=await db.from('transactions').insert(t);if(r.error)return toast(r.error.message);
 for(const i of cart){const p=prods.find(x=>x.id==i.id);p.stock-=i.qty;await db.from('products').update({stock:p.stock}).eq('id',i.id)}
 if(pay==='Piutang')await db.from('receivables').insert({trx_no,customer,amount:total,paid,due_date:due||null,status:paid>=total?'Lunas':paid>0?'Sebagian':'Belum Lunas'});
 cart=[];disc=0;kasir();receipt(t)}
+async function qris(id,amount){const r=await db.functions.invoke('midtrans',{body:{action:'charge',order_id:id,amount}});
+if(r.error||!r.data||!r.data.qr_url)return confirm('QRIS otomatis belum aktif ('+((r.data&&r.data.raw)||'fungsi Midtrans belum dipasang')+'). Lanjut dengan konfirmasi manual, dana sudah masuk?');
+return new Promise(res=>{let on=1;const end=v=>{if(on){on=0;modal();res(v)}};
+modal(`<h3>Scan QRIS</h3><img src="${esc(r.data.qr_url)}" alt="QRIS" style="width:100%;background:#fff;border-radius:12px"><p class="mut">Total ${rp(amount)} · menunggu pembayaran…</p><button class="btn ghost" id="qc">Batalkan</button>`);
+$('#qc').onclick=()=>end(false);
+(async()=>{while(on&&$('#qc')){await new Promise(x=>setTimeout(x,3000));if(!on)break;const q2=await db.functions.invoke('midtrans',{body:{action:'status',order_id:id}});if(q2.data&&q2.data.status==='settlement')return end(true)}end(false)})()})}
 function receipt(t){lastT=t;modal(`<div id="rc" class="rc"><h3>${esc(BIZ)}</h3><p>${esc(t.trx_no)}<br>${new Date(t.created_at).toLocaleString('id-ID')}<br>Kasir: ${esc(t.cashier_name)}</p><hr>${t.items.map(i=>`<div class="r"><span>${esc(i.name)} x${i.qty}</span><span>${rp(i.price*i.qty)}</span></div>`).join('')}<hr><div class="r"><span>Diskon</span><span>${rp(t.discount)}</span></div><div class="r"><b>Total</b><b>${rp(t.total)}</b></div><div class="r"><span>${esc(t.method)}</span><span>${rp(t.paid)}</span></div><div class="r"><span>Kembali</span><span>${rp(Math.max(0,t.paid-t.total))}</span></div></div><div class="row"><button class="btn" onclick="window.print()">Cetak</button><button class="btn ghost" onclick="wa()">WhatsApp</button><button class="btn ghost" onclick="modal()">Tutup</button></div>`)}
 function wa(){const t=lastT;open('https://wa.me/?text='+encodeURIComponent(`${BIZ}\n${t.trx_no}\n`+t.items.map(i=>`${i.name} x${i.qty} ${rp(i.price*i.qty)}`).join('\n')+`\nTotal: ${rp(t.total)} (${t.method})`))}
 
@@ -138,14 +147,15 @@ function hl(v){v=v.toLowerCase();$('#hl').innerHTML=hist.filter(t=>(t.trx_no+t.c
 function produk(){const rows=prods.map(p=>`<div class="ln"><span><b>${esc(p.name)}</b><br><small class="mut">${esc(p.sku||'-')} · ${esc(p.category||'-')} · ${rp(p.price)}</small></span><span class="pill ${p.stock<=5?'no':'ok'}">Stok ${p.stock}</span><span><button class="btn sm ghost" onclick="pform('${p.id}')">Ubah</button> <button class="btn sm red" onclick="delP('${p.id}')">Hapus</button></span></div>`).join('');
 $('#main').innerHTML=`<h2>Produk & Stok</h2><div class="stats"><div>Jenis produk<b>${prods.length}</b></div><div>Total stok<b>${prods.reduce((a,p)=>a+p.stock,0)}</b></div></div><button class="btn" onclick="pform()">+ Tambah produk</button><div class="tbl">${rows||'<p class="mut" style="padding:10px">Belum ada produk</p>'}</div>`}
 function pform(id){const p=prods.find(x=>x.id==id)||{};const f=(k,l,t='text')=>`<input id="f-${k}" type="${t}" placeholder="${l}" value="${esc(p[k]??'')}">`;
-modal(`<h3>${id?'Ubah':'Tambah'} produk</h3>${f('name','Nama produk')}${f('sku','SKU / kode')}${f('category','Kategori (Makanan, Minuman, ...)')}${f('price','Harga jual','number')}${f('cost','Harga modal','number')}${f('stock','Stok','number')}${f('image_url','Link foto (opsional)')}<div class="row"><button class="btn ghost" onclick="modal()">Batal</button><button class="btn" onclick="saveP('${id||''}')">Simpan</button></div>`)}
+modal(`<h3>${id?'Ubah':'Tambah'} produk</h3>${f('name','Nama produk')}${f('sku','SKU / kode')}${f('category','Kategori (Makanan, Minuman, ...)')}${f('price','Harga jual','number')}${f('cost','Harga modal','number')}${f('stock','Stok','number')}${f('image_url','Link foto (atau pilih file di bawah)')}<input type="file" accept="image/*" onchange="pimg(this)"><div class="row"><button class="btn ghost" onclick="modal()">Batal</button><button class="btn" onclick="saveP('${id||''}')">Simpan</button></div>`)}
+function pimg(el){const f=el.files[0];if(!f)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas'),k=240/Math.max(im.width,im.height,240);c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);$('#f-image_url').value=c.toDataURL('image/jpeg',.6);toast('Foto siap, klik Simpan')};im.src=URL.createObjectURL(f)}
 async function saveP(id){const g=k=>$('#f-'+k).value,d={name:g('name'),sku:g('sku'),category:g('category'),price:+g('price')||0,cost:+g('cost')||0,stock:+g('stock')||0,image_url:g('image_url')};
 if(!d.name)return toast('Nama wajib diisi');const r=id?await db.from('products').update(d).eq('id',id):await db.from('products').insert(d);if(r.error)return toast(r.error.message);modal();await loadProds();produk()}
 async function delP(id){if(!confirm('Hapus produk ini?'))return;await db.from('products').delete().eq('id',id);await loadProds();produk()}
 
 // ---------- Laporan ----------
 async function laporan(days=1){const f=new Date();f.setHours(0,0,0,0);f.setDate(f.getDate()-(days-1));
-const d=(await db.from('transactions').select('*').gte('created_at',f.toISOString()).order('created_at')).data||[];
+const d=(await db.from('transactions').select('*').gte('created_at',f.toISOString()).order('created_at')).data||[];window.lapData=d;
 const omzet=d.reduce((a,t)=>a+t.total,0),profit=d.reduce((a,t)=>a+t.items.reduce((s,i)=>s+(i.price-i.cost)*i.qty,0)-t.discount,0);
 const grp=(fn)=>{const o={};d.forEach(t=>{const k=fn(t);o[k]=(o[k]||0)+t.total});return o};
 const day=grp(t=>new Date(t.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit'})),ks=Object.keys(day),mx=Math.max(1,...Object.values(day));
@@ -154,17 +164,21 @@ const top={};d.forEach(t=>t.items.forEach(i=>top[i.name]=(top[i.name]||0)+i.qty)
 const list=(o,fmt)=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`<div class="ln"><span>${esc(k)}</span><b>${fmt(v)}</b></div>`).join('')||'<p class="mut">-</p>';
 const br=grp(t=>(branches.find(b=>b.id===t.branch_id)||{}).name||'Tanpa cabang');
 $('#main').innerHTML=`<h2>Laporan</h2><div class="chips">${[[1,'Hari ini'],[7,'7 hari'],[30,'30 hari']].map(([n,l])=>`<button class="chip ${n===days?'on':''}" onclick="laporan(${n})">${l}</button>`).join('')}</div>
-<div class="stats"><div>Omzet<b>${rp(omzet)}</b></div><div>Transaksi<b>${d.length}</b></div><div>Rata-rata<b>${rp(d.length?omzet/d.length:0)}</b></div><div>Profit bersih<b>${rp(profit)}</b></div></div>
+<div class="row np" style="margin:0 0 12px"><button class="btn ghost" onclick="csv()">⬇️ Ekspor Excel</button><button class="btn ghost" onclick="cetak()">🖨️ Cetak laporan</button></div><div class="stats"><div>Omzet<b>${rp(omzet)}</b></div><div>Transaksi<b>${d.length}</b></div><div>Rata-rata<b>${rp(d.length?omzet/d.length:0)}</b></div><div>Profit bersih<b>${rp(profit)}</b></div></div>
 <div class="tbl" style="overflow-x:auto">${svg}</div>
 <div class="tbl"><b>Produk terlaris</b>${list(top,v=>v+' terjual')}</div>
 <div class="tbl"><b>Performa kasir</b>${list(grp(t=>t.cashier_name),rp)}</div>
 <div class="tbl"><b>Performa cabang</b>${list(br,rp)}</div>`}
 
+function csv(){const rows=[['No TRX','Waktu','Kasir','Metode','Diskon','Total','Dibayar','Pelanggan','Item']].concat((window.lapData||[]).map(t=>[t.trx_no,new Date(t.created_at).toLocaleString('id-ID'),t.cashier_name,t.method,t.discount,t.total,t.paid,t.customer||'',t.items.map(i=>i.name+' x'+i.qty).join(', ')]));
+const s='\ufeff'+rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');
+const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='laporan-'+new Date().toISOString().slice(0,10)+'.csv';a.click()}
+function cetak(){document.body.classList.add('pl');print();document.body.classList.remove('pl')}
 // ---------- Piutang ----------
 let rec=[];
 async function piutang(){rec=(await db.from('receivables').select('*').order('due_date')).data||[];
 const l=rec.filter(r=>pf==='Semua'||r.status===pf);
-$('#main').innerHTML=`<h2>Buku Piutang</h2><div class="chips">${['Semua','Belum Lunas','Sebagian','Lunas'].map(s=>`<button class="chip ${s===pf?'on':''}" onclick="pf='${s}';piutang()">${s}</button>`).join('')}</div><div class="tbl">${l.map(r=>`<div class="ln"><span><b>${esc(r.customer)}</b><br><small class="mut">${esc(r.trx_no)} · jatuh tempo ${esc(r.due_date||'-')}<br>Total ${rp(r.amount)} · dibayar ${rp(r.paid)} · sisa ${rp(r.amount-r.paid)}</small></span><span class="pill ${r.status==='Lunas'?'ok':r.status==='Sebagian'?'mid':'no'}">${r.status}</span>${r.status!=='Lunas'?`<button class="btn sm" onclick="cicil('${r.id}')">Bayar</button>`:''}</div>`).join('')||'<p class="mut" style="padding:10px">Tidak ada piutang</p>'}</div>`}
+$('#main').innerHTML=`<h2>Buku Piutang</h2><div class="chips">${['Semua','Belum Lunas','Sebagian','Lunas'].map(s=>`<button class="chip ${s===pf?'on':''}" onclick="pf='${s}';piutang()">${s}</button>`).join('')}</div><div class="tbl">${l.map(r=>`<div class="ln"><span><b>${esc(r.customer)}</b><br><small class="mut">${esc(r.trx_no)} · jatuh tempo ${esc(r.due_date||'-')}${r.status!=='Lunas'&&r.due_date&&r.due_date<new Date().toISOString().slice(0,10)?' ⚠️ LEWAT':''}<br>Total ${rp(r.amount)} · dibayar ${rp(r.paid)} · sisa ${rp(r.amount-r.paid)}</small></span><span class="pill ${r.status==='Lunas'?'ok':r.status==='Sebagian'?'mid':'no'}">${r.status}</span>${r.status!=='Lunas'?`<button class="btn sm" onclick="cicil('${r.id}')">Bayar</button>`:''}</div>`).join('')||'<p class="mut" style="padding:10px">Tidak ada piutang</p>'}</div>`}
 async function cicil(id){const r=rec.find(x=>x.id==id),v=+prompt('Jumlah cicilan (sisa '+rp(r.amount-r.paid)+')');if(!v||v<=0)return;const paid=Math.min(r.amount,+r.paid+v);await db.from('receivables').update({paid,status:paid>=r.amount?'Lunas':'Sebagian'}).eq('id',id);piutang()}
 
 // ---------- Shift ----------
